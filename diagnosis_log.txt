@@ -1,0 +1,23 @@
+
+--- 2025-07-31 10:48:40 ---
+Symptoms: fever headache vomit cough
+Disease: Flu
+Severity: 6/10
+Cure: Rest, fluids, and fever meds.
+
+--- 2025-07-31 13:25:04 ---
+Symptoms: vomiting itching
+Disease: Food Poisoning
+Severity: 7/10
+Cure: Oral rehydration and light food.
+
+--- 2025-07-31 13:36:04 ---
+Symptoms: courses offered itching sore throat fever sore throat
+Disease: Common Cold
+Severity: 3/10
+Cure: Steam inhalation, rest, and warm fluids.
+Recommended: Dr. Mohan (General Physician) – Apollo Clinics
+2025-07-31 14:23:29 - Disease: Flu, Symptoms: fever, headache, cough, sore throat
+2025-07-31 14:27:12 - Disease: Allergy, Symptoms: fever,headache, sore throat, fever, headache, rash, itching, swelling
+2025-07-31 14:35:59 - Disease: Allergy, Symptoms: rash, i got fever, itching, also there is swelling
+2025-07-31 17:22:56 - Disease: Food Poisoning, Symptoms: stomach ache, vomiting, diarrhea, stomach pain

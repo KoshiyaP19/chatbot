@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Healthcare Chatbot</title>
+  <head>AI chatbot </head>
+  <style>
+    body {
+      background: #e3f2fd;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 30px;
+    }
+    #chatbox {
+      width: 100%;
+      max-width: 700px;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .message {
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 10px;
+      position: relative;
+      max-width: 90%;
+    }
+    .user {
+      background: #d0f0f8;
+      align-self: flex-end;
+      text-align: right;
+      margin-left: auto;
+    }
+    .bot {
+      background: #e1fbe1;
+      align-self: flex-start;
+      text-align: left;
+      margin-right: auto;
+    }
+    .timestamp {
+      font-size: 0.75em;
+      color: #777;
+      margin-top: 5px;
+    }
+    #chatlog {
+      display: flex;
+      flex-direction: column;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    input[type="text"] {
+      width: 75%;
+      padding: 10px;
+      margin-top: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      background: #0288d1;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1em;
+      margin-left: 10px;
+    }
+    button:hover {
+      background: #0277bd;
+    }
+  </style>
+</head>
+<body>
+  <div id="chatbox">
+    <div id="chatlog"></div>
+    <div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+  <input type="text" id="userInput" placeholder="Enter your symptom..." />
+  <button onclick="handleSend()">Send</button>
+  <button onclick="startVoiceInput()">🎙️</button>
+</div>
+
+  <script>
+  const input = document.getElementById("userInput");
+  const chatlog = document.getElementById("chatlog");
+
+  let patientName = "";
+  let awaitingName = true;
+
+  function getTimestamp() {
+    const now = new Date();
+    const options = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    return now.toLocaleString('en-IN', options);
+  }
+
+  function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-IN';
+    utterance.rate = 1;
+    speechSynthesis.speak(utterance);
+  }
+
+  async function sendMessage(msg) {
+    if (!msg) return;
+
+    chatlog.innerHTML += `
+      <div class="message user">
+        ${msg}
+        <div class="timestamp">${getTimestamp()}</div>
+      </div>
+    `;
+    chatlog.scrollTop = chatlog.scrollHeight;
+
+    if (awaitingName) {
+      patientName = msg;
+      awaitingName = false;
+      const greet = `Nice to meet you, ${patientName}. Please describe your symptoms.`;
+      chatlog.innerHTML += `
+        <div class="message bot">
+          ${greet}
+          <div class="timestamp">${getTimestamp()}</div>
+        </div>
+      `;
+      speak(greet);
+      input.value = "";
+      return;
+    }
+
+    const res = await fetch("/message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg })
+    });
+
+    const data = await res.json();
+    const responseText = data.response.replace(/\n/g, "<br>");
+
+    chatlog.innerHTML += `
+      <div class="message bot">
+        ${responseText}
+        <div class="timestamp">${getTimestamp()}</div>
+      </div>
+    `;
+    speak(data.response);
+    input.value = "";
+    chatlog.scrollTop = chatlog.scrollHeight;
+  }
+
+  function handleSend() {
+    const msg = input.value.trim();
+    sendMessage(msg);
+  }
+
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+
+  recognition.onresult = function(event) {
+    const transcript = event.results[0][0].transcript;
+    input.value = transcript;
+    sendMessage(transcript);
+  };
+
+  function startVoiceInput() {
+    recognition.start();
+  }
+
+  // Initial greet
+  window.onload = function () {
+    const greet = "Hello! What’s your name?";
+    chatlog.innerHTML += `
+      <div class="message bot">
+        ${greet}
+        <div class="timestamp">${getTimestamp()}</div>
+      </div>
+    `;
+    speak(greet);
+  };
+</script>
+
+
+</body>
+</html>
