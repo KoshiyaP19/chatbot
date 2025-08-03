@@ -1,8 +1,9 @@
+setuptools>=42
+wheel
 Flask==2.2.5
 gunicorn
 joblib
 scikit-learn
 requests
 numpy>=1.21,<1.26
-setuptools
-wheel
+
