@@ -3,4 +3,4 @@ gunicorn
 joblib
 scikit-learn
 requests
-numpy>=1.21,<1.26
+numpy
