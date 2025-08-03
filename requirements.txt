@@ -3,4 +3,5 @@ gunicorn
 joblib
 scikit-learn
 requests
-numpy
+numpy>=1.21,<1.26
+flask_cors
