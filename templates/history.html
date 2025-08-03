@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ username }}'s Medical History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <h2>{{ username }}'s Medical History</h2>
+        {% if history %}
+            <ul class="chat-box">
+                {% for entry in history %}
+                    <li class="chat-message">{{ entry.strip() }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No history available yet.</p>
+        {% endif %}
+        <a href="{{ url_for('chat') }}" class="btn">Back to Chat</a>
+    </div>
+</body>
+</html>

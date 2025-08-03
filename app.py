@@ -1,78 +1,157 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+import joblib
+import datetime
+import os
+import requests
+from flask_cors import CORS
 from datetime import datetime
 
-app = Flask(__name__)
 
-# Simulate ML model with rules
-disease_rules = {
-    'fever,cough,sore throat': ('Flu', 'Stay hydrated and rest.'),
-    'headache,nausea,blurred vision': ('Migraine', 'Avoid bright lights. Take prescribed painkillers.'),
-    'chest pain,shortness of breath': ('Heart Issue', 'Seek emergency care immediately.'),
-    'rash,itching,swelling': ('Allergy', 'Use antihistamines. Avoid allergens.'),
-    'stomach pain,diarrhea,vomiting': ('Food Poisoning', 'Stay hydrated. Eat light.'),
+app = Flask(__name__)    # 👈 This defines 'app'
+CORS(app)    
+
+
+app.secret_key = 'your_secret_key'
+
+model, symptom_map = joblib.load('model.joblib')
+
+advice_map = {
+    'Flu': 'Drink fluids and rest. Use a humidifier to ease congestion.',
+    'Migraine': 'Stay in a dark, quiet room. Take prescribed medications.',
+    'Food Poisoning': 'Stay hydrated and avoid solid food for a few hours.'
 }
 
-# Hospital suggestions
-hospital_info = {
-    'Flu': 'City General Hospital',
-    'Migraine': 'NeuroCare Clinic',
-    'Heart Issue': 'Apollo Heart Center',
-    'Allergy': 'Skin & Allergy Clinic',
-    'Food Poisoning': 'HealthPlus Hospital',
-}
-
-# Store user session symptoms
-session_symptoms = []
-
-@app.route("/")
+@app.route('/')
 def home():
-    return render_template("index.html")
+    return redirect('/login')
 
-@app.route("/message", methods=["POST"])
-def message():
-    global session_symptoms
-    data = request.get_json()
-    user_input = data.get("message", "").lower()
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form['username'] and request.form['password']:
+            session['username'] = request.form['username']
+            return redirect('/chat')
+        session['username'] = username
 
-    # Reset logic
-    if "reset" in user_input:
-        session_symptoms = []
-        return jsonify(response="Session reset. Please start by telling your first symptom.")
+    return render_template('login.html')
 
-    # Add symptom
-    session_symptoms.append(user_input)
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        return redirect('/login')
+    return render_template('register.html')
 
-    # Check if enough symptoms
-    if len(session_symptoms) < 3:
-        return jsonify(response=f"Do you have anyother symptom {len(session_symptoms)+1}.")
+@app.route('/chat', methods=['GET', 'POST'])
+def chat():
+    if 'username' not in session:
+        return redirect('/login')
 
-    # Try diagnosis
-    combined = ",".join(session_symptoms)
-    diagnosis = None
-    for symptoms, (disease, advice) in disease_rules.items():
-        required = symptoms.split(',')
-        if all(symptom in combined for symptom in required):
-            diagnosis = (disease, advice)
-            break
+    if request.method == 'POST':
+        step = int(request.form['step'])
+        chat_history = session.get('chat_history', [])
 
-    if diagnosis:
-        disease, advice = diagnosis
-        hospital = hospital_info[disease]
-        log_diagnosis(disease, session_symptoms)
-        session_symptoms = []  # Reset session after diagnosis
-        response = (
-            f"Based on your symptoms, you may have **{disease}**.\n"
-            f"Advice: {advice}\n"
-            f"Suggested Hospital: {hospital}"
-        )
-        return jsonify(response=response)
+        message = request.form['message']
+        chat_history.append(("Patient", message))
+
+        if step == 1:
+            session['symptom_1'] = message
+            reply = "Please enter your second symptom:"
+        elif step == 2:
+            session['symptom_2'] = message
+            reply = "Please enter your third symptom:"
+        else:
+            session['symptom_3'] = message
+            s1 = symptom_map.get(session['symptom_1'], -1)
+            s2 = symptom_map.get(session['symptom_2'], -1)
+            s3 = symptom_map.get(session['symptom_3'], -1)
+            prediction = model.predict([[s1, s2, s3]])[0]
+            advice = advice_map.get(prediction, "Consult a nearby doctor.")
+            
+            reply = f"Based on your symptoms, you may have: {prediction}.\n Advice: {advice}"
+            
+            # ✅ Save to user-specific file
+            username = session.get('username')
+            if username:
+                with open(f"history_{username}.txt", "a") as f:
+                    f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {prediction}\n")
+
+            # ✅ Clear session chat state
+            session.pop('symptom_1', None)
+            session.pop('symptom_2', None)
+            session.pop('symptom_3', None)
+            session.pop('chat_history', None)
+
+        chat_history.append(("Bot", reply))
+        session['chat_history'] = chat_history
+        return render_template('chat.html', chat_history=chat_history, step=min(step+1, 3))
+
+    # GET method
+    session['chat_history'] = []
+    return render_template('chat.html', chat_history=[], step=1)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+@app.route("/history")
+def history():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    username = session['username']
+    history_file = f"history_{username}.txt"
+    
+    if os.path.exists(history_file):
+        with open(history_file, "r") as f:
+            history_data = f.readlines()
     else:
-        return jsonify(response="Thanks. Please tell me more symptoms for accurate diagnosis.")
+        history_data = []
 
-def log_diagnosis(disease, symptoms):
-    with open("diagnosis_log.txt", "a") as file:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        file.write(f"{timestamp} - Disease: {disease}, Symptoms: {', '.join(symptoms)}\n")
+    return render_template("history.html", history=history_data, username=username)
 
-if __name__ == "__main__":
+
+
+@app.route('/find_hospitals', methods=['POST'])
+def find_hospitals():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        lat = data.get('latitude')
+        lon = data.get('longitude')
+
+        if lat is None or lon is None:
+            return jsonify({'error': 'Missing latitude or longitude'}), 400
+
+        lat = float(lat)
+        lon = float(lon)
+
+        url = f"https://nominatim.openstreetmap.org/search"
+        params = {
+            'format': 'json',
+            'q': 'hospital',
+            'limit': 10,
+            'bounded': 1,
+            'viewbox': f"{lon - 0.1},{lat + 0.1},{lon + 0.1},{lat - 0.1}"
+        }
+        headers = {'User-Agent': 'Mozilla/5.0'}
+
+        response = requests.get(url, params=params, headers=headers)
+        response.raise_for_status()
+
+        results = response.json()
+        hospitals = [{'name': r.get('display_name'), 'lat': r.get('lat'), 'lon': r.get('lon')} for r in results]
+
+        return jsonify({'hospitals': hospitals})
+
+    except Exception as e:
+        import traceback
+        print("Error fetching hospital data:", traceback.format_exc())
+        return jsonify({'error': 'Failed to fetch hospital data'}), 500
+
+
+
+if __name__ == '__main__':
     app.run(debug=True)

@@ -21,3 +21,5 @@ Recommended: Dr. Mohan (General Physician) – Apollo Clinics
 2025-07-31 14:27:12 - Disease: Allergy, Symptoms: fever,headache, sore throat, fever, headache, rash, itching, swelling
 2025-07-31 14:35:59 - Disease: Allergy, Symptoms: rash, i got fever, itching, also there is swelling
 2025-07-31 17:22:56 - Disease: Food Poisoning, Symptoms: stomach ache, vomiting, diarrhea, stomach pain
+2025-07-31 19:30:55 - Disease: Allergy, Symptoms: i have rashes, swelling, itching
+2025-07-31 19:38:32 - Disease: Allergy, Symptoms: i have rashes on my skin, i have swelling, itching
